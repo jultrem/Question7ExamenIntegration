@@ -1,26 +1,62 @@
-# Use the latest 2.1 version of CircleCI pipeline process engine.
-# See: https://circleci.com/docs/2.0/configuration-reference
+
 version: 2.1
 
-# Define a job to be invoked later in a workflow.
-# See: https://circleci.com/docs/2.0/configuration-reference/#jobs
 jobs:
-  say-hello:
-    # Specify the execution environment. You can specify an image from Dockerhub or use one of our Convenience Images from CircleCI's Developer Hub.
-    # See: https://circleci.com/docs/2.0/configuration-reference/#docker-machine-macos-windows-executor
-    docker:
-      - image: cimg/base:stable
-    # Add steps to the job
-    # See: https://circleci.com/docs/2.0/configuration-reference/#steps
+  waitForStagingToBeUp:
+    machine: true
     steps:
-      - checkout
-      - run:
-          name: "Say hello"
-          command: "echo Hello, World!"
+      - run: echo "waiting until response from staging..."
+  deployProd:
+    machine: true
+    steps:
+      - run: echo "deploy production build"
+  notifyTeamOfNewBuild:
+      machine: true
+      steps:
+        - run: echo "notifying team of new build pipeline"
+  acceptances1:
+      machine: true
+      steps:
+        - run: echo "acceptance tests 1-5"
+  checkoutAndTest:
+      machine: true
+      steps:
+        - run: echo "unit tests"
+  acceptances2:
+      machine: true
+      steps:
+        - run: echo "acceptance tests 6-10"
+  deployStaging:
+      machine: true
+      steps:
+        - run: echo "deploy staging"
+  notifyNewVersion:
+      machine: true
+      steps:
+        - run: echo "notifying client of new version"
 
-# Invoke jobs via workflows
-# See: https://circleci.com/docs/2.0/configuration-reference/#workflows
+
 workflows:
   say-hello-workflow:
     jobs:
-      - say-hello
+      - notifyTeamOfNewBuild
+      - checkoutAndTest
+      - deployStaging:
+          requires:
+          - checkoutAndTest
+      - waitForStagingToBeUp:
+          requires:
+            - deployStaging
+      - acceptances1:
+          requires:
+            - waitForStagingToBeUp
+      - acceptances2:
+          requires:
+            - waitForStagingToBeUp
+      - deployProd:
+          requires:
+            - acceptances1
+            - acceptances2
+      - notifyNewVersion:
+          requires:
+            - deployProd
